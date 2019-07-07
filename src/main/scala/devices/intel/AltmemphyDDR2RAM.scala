@@ -52,7 +52,7 @@ class AltmemphyDDR2RAMImp(_outer: AltmemphyDDR2RAM)(implicit p: Parameters) exte
 
   val tl_req = Wire(new DdrRequest)
   val ddr_req = Wire(new DdrRequest)
-  val fifo_req = FIFO(2, ddr_req, ddr_clock, tl_req, clock)
+  val fifo_req = FIFO(2, ddr_req, ddr_clock, tl_req, clock, showahead = false)
 
   class DdrResponce extends Bundle {
     val is_reading = Bool()
@@ -63,40 +63,26 @@ class AltmemphyDDR2RAMImp(_outer: AltmemphyDDR2RAM)(implicit p: Parameters) exte
 
   val tl_resp = Wire(new DdrResponce)
   val ddr_resp = Wire(new DdrResponce)
-  val fifo_resp = FIFO(2, tl_resp, clock, ddr_resp, ddr_clock)
+  val fifo_resp = FIFO(2, tl_resp, clock, ddr_resp, ddr_clock, showahead = true)
 
   in.a.ready := !fifo_req.io.wrfull
 
   tl_req.size := in.a.bits.size
   tl_req.source := in.a.bits.source
   tl_req.address := edge.addr_hi(in.a.bits.address - _outer.base.U)(addrSize - 1, 0)
-  tl_req.be := 0xFFFF.U
+  tl_req.be := in.a.bits.mask
   tl_req.wdata := in.a.bits.data
   tl_req.is_reading := in.a.bits.opcode === TLMessages.Get
 
   fifo_req.io.wrreq := in.a.fire()
 
-
-  val tl_d_valid = RegInit(false.B)
-  in.d.valid := tl_d_valid
-
-  val will_read_resp = !fifo_resp.io.rdempty && !tl_d_valid
-  fifo_resp.io.rdreq := will_read_resp
-  val resp_is_read = RegNext(will_read_resp)
-
-
+  in.d.valid := !fifo_resp.io.rdempty
   in.d.bits := Mux(
     tl_resp.is_reading,
     edge.AccessAck(toSource = tl_resp.source, lgSize = tl_resp.size, data = tl_resp.rdata),
     edge.AccessAck(toSource = tl_resp.source, lgSize = tl_resp.size)
-  ) holdUnless resp_is_read
-
-  when (resp_is_read) {
-    tl_d_valid := true.B
-  }
-  when (in.d.fire()) {
-    tl_d_valid := false.B
-  }
+  ) holdUnless !fifo_resp.io.rdempty
+  fifo_resp.io.rdreq := in.d.fire()
 
   withClock(ddr_clock) {
     val rreq = RegInit(false.B)

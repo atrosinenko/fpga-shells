@@ -99,7 +99,12 @@ class ZeowaaShell(implicit val p: Parameters) extends RawModule {
   val jtag_tms = IO(Input(Bool()))
 
   val uart_rx = IO(Input(Bool()))
-  val uart_tx = IO(Analog(1.W))
+  val uart_tx = IO(Output(Bool()))
+
+  val sd_cs = IO(Output(Bool()))
+  val sd_sck = IO(Output(Bool()))
+  val sd_mosi = IO(Output(Bool()))
+  val sd_miso = IO(Input(Bool()))
 
   // Internal wiring
 

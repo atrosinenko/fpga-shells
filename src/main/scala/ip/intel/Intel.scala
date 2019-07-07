@@ -55,9 +55,9 @@ class LATCH extends BlackBox {
   })
 }
 
-class FIFO (val width: Int, lglength: Int) extends BlackBox(Map(
+class FIFO (val width: Int, lglength: Int, showahead: Boolean) extends BlackBox(Map(
   "intended_device_family" -> StringParam("Cyclone IV E"),
-  "lpm_showahead" -> StringParam("OFF"),
+  "lpm_showahead" -> StringParam(if (showahead) "ON" else "OFF"),
   "lpm_type" -> StringParam("dcfifo"),
   "lpm_widthu" -> IntParam(lglength),
   "overflow_checking" -> StringParam("ON"),
@@ -84,8 +84,8 @@ class FIFO (val width: Int, lglength: Int) extends BlackBox(Map(
 }
 
 object FIFO {
-  def apply[T <: Data](lglength: Int, output: T, outclk: Clock, input: T, inclk: Clock): FIFO = {
-    val res = Module(new FIFO(width = output.widthOption.get, lglength = lglength))
+  def apply[T <: Data](lglength: Int, output: T, outclk: Clock, input: T, inclk: Clock, showahead: Boolean): FIFO = {
+    val res = Module(new FIFO(width = output.widthOption.get, lglength = lglength, showahead))
     require(input.getWidth == res.width)
     output := res.io.q.asTypeOf(output)
     res.io.rdclk := outclk
